@@ -1,0 +1,144 @@
+' Funzione per pulire i dati
+Function CleanString(ByVal Str As String) As String
+    ' Rimuove spazi extra e converte la stringa in maiuscolo
+    CleanString = Trim(UCase(Str))
+End Function
+
+' Sub principale
+Sub MatchConExcel()
+    Dim OutlookApp As Object
+    Dim Namespace As Object
+    Dim ContactsFolder As Object
+    Dim Contact As Object
+    Dim ExcelApp As Object
+    Dim Workbook As Object
+    Dim Worksheet As Object
+    Dim CompanyName As String
+    Dim LastRow As Long
+    Dim Row As Long
+    Dim MatchFound As Boolean
+    Dim TotalItems As Long
+    Dim ContactCount As Long
+
+    On Error GoTo Cleanup
+
+    ' Inizializza Outlook
+    Debug.Print "Inizializzazione di Outlook..."
+    Set OutlookApp = CreateObject("Outlook.Application")
+    Set Namespace = OutlookApp.GetNamespace("MAPI")
+
+    ' Trova la cartella dei contatti
+    Debug.Print "Ricerca della cartella MARKETING NATIONALS..."
+    Set ContactsFolder = Namespace.Folders("giulio.fioravanti@recruit.com.mx").Folders("Contatti").Folders("AAA MARKETING NATIONALS")
+    If ContactsFolder Is Nothing Then
+        MsgBox "Cartella ALLECO non trovata. Controlla il percorso.", vbExclamation
+        Debug.Print "Errore: cartella MARKETING NATIONALS non trovata."
+        Exit Sub
+    End If
+    Debug.Print "Cartella ALLECO trovata con successo!"
+
+    ' Conta gli elementi nella cartella
+    TotalItems = ContactsFolder.items.Count
+    ContactCount = 0
+    Debug.Print "Numero totale di elementi nella cartella MARKETING NATIONALS: " & TotalItems
+
+    For Each Contact In ContactsFolder.items
+        If Contact.Class = 40 Then
+            ContactCount = ContactCount + 1
+        End If
+    Next Contact
+    Debug.Print "Numero di contatti validi trovati nella cartella MARKETING NATIONALS: " & ContactCount
+
+    ' Stampa le voci del campo "Società"
+    Debug.Print "Lettura del campo 'Società' dei contatti nella cartella MARKETING NATIONALS:"
+    For Each Contact In ContactsFolder.items
+        If Contact.Class = 40 Then ' Verifica che l'elemento sia un contatto
+            If Not IsEmpty(Contact.CompanyName) And Contact.CompanyName <> "" Then
+                Debug.Print "Contatto: " & Contact.FullName & " - Società: " & Contact.CompanyName
+            Else
+                Debug.Print "Contatto: " & Contact.FullName & " - Società: VUOTO"
+            End If
+        Else
+            Debug.Print "Elemento non valido: non è un contatto."
+        End If
+    Next Contact
+
+    ' Inizializza Excel
+    Debug.Print "Inizializzazione di Excel..."
+    Set ExcelApp = CreateObject("Excel.Application")
+    ExcelApp.Visible = False
+    Debug.Print "Apertura del file LISTAAZIENDE.xlsx..."
+    Set Workbook = ExcelApp.Workbooks.Open("C:\Users\giuli\Desktop\LISTAAZIENDE.xlsx")
+    Debug.Print "File LISTAAZIENDE.xlsx aperto con successo!"
+    Set Worksheet = Workbook.Sheets("Sheet1")
+    Debug.Print "Foglio 'Sheet1' trovato con successo!"
+
+    ' Debug limitato alle prime 10 righe della colonna A
+    Debug.Print "Lettura delle voci dalla riga A1 alla riga A10:"
+    For Row = 1 To 10
+        If Trim(Worksheet.Cells(Row, 1).Value) = "" Then
+            Debug.Print "Riga " & Row & ": VUOTA"
+        Else
+            Debug.Print "Riga " & Row & ": " & Worksheet.Cells(Row, 1).Value
+        End If
+    Next Row
+
+    ' Trova l'ultima riga della colonna A
+    LastRow = Worksheet.Cells(Worksheet.Rows.Count, "A").End(xlUp).Row
+    If LastRow < 1 Then
+        MsgBox "La colonna A del foglio Excel è vuota.", vbExclamation
+        Debug.Print "Errore: la colonna A del foglio Excel è vuota."
+        GoTo Cleanup
+    End If
+    Debug.Print "Ultima riga nella colonna A: " & LastRow
+
+    ' Stampa tutte le voci della colonna A
+    Debug.Print "Lettura delle voci nella colonna A del foglio 1:"
+    For Row = 1 To LastRow
+        If Trim(Worksheet.Cells(Row, 1).Value) = "" Then
+            Debug.Print "Riga " & Row & ": VUOTA"
+        Else
+            Debug.Print "Riga " & Row & ": " & Worksheet.Cells(Row, 1).Value
+        End If
+    Next Row
+
+' Itera attraverso i contatti per il confronto
+Debug.Print "Inizio iterazione dei contatti per il confronto..."
+Dim ExcelValue As String ' Dichiarazione spostata fuori dai cicli
+For Each Contact In ContactsFolder.items
+    If Contact.Class = 40 Then ' Verifica che l'elemento sia un contatto
+        If Not IsEmpty(Contact.CompanyName) And Contact.CompanyName <> "" Then
+            CompanyName = CleanString(Contact.CompanyName) ' Pulisce il valore della società
+            Debug.Print "Nome contatto: " & Contact.FullName & " - Società: " & CompanyName
+            MatchFound = False
+
+            ' Se non è stato trovato un match
+            If Not MatchFound Then
+                Debug.Print "Nessun match trovato per il contatto: " & Contact.FullName
+                ' Contrassegna il contatto
+                Contact.MarkAsTask olMarkThisWeek ' Contrassegna il contatto per questa settimana
+                Contact.Save
+                Debug.Print "Contrassegno completato per il contatto: " & Contact.FullName
+            End If
+        Else
+            Debug.Print "Contatto senza valore nel campo 'Società': " & Contact.FullName
+        End If
+    Else
+        Debug.Print "Elemento non valido (non è un contatto)."
+    End If
+Next Contact
+
+
+Cleanup:
+    On Error Resume Next
+    If Not Workbook Is Nothing Then Workbook.Close False
+    If Not ExcelApp Is Nothing Then ExcelApp.Quit
+    Debug.Print "Chiusura Excel e pulizia completata."
+    Set Worksheet = Nothing
+    Set Workbook = Nothing
+    Set ExcelApp = Nothing
+    Set ContactsFolder = Nothing
+    Set Namespace = Nothing
+    Set OutlookApp = Nothing
+    Debug.Print "Controllo completato con successo."
+End Sub
