@@ -1,5 +1,7 @@
 # OutlookForB2BSales
 
+HI THERE! PLEASE FIND A BUNCH OF SCRIPTS THAT MIGHT HELP YOU OUT DURING YOUR OFFICE ROUTINE AS SALES PERSON. THOSE SCRIPTS WORKS WITH THE OUTLOOK DESKTOP VERSION. BEAR IN MIND THAT THIS VERSION WILL SOON NO LONGER BE MADE AVAILABLE BY MICROSOFT.
+
 NUMBER 1
 CorrectSpanishLanguageAccentImportedOnOutlookContact
 This script allows you to handle non ASCII carachters after importing spanish accented names into outlook.
