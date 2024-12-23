@@ -18,3 +18,6 @@ acorreia was not found in example.com."""
 The initial sentence, "The message could not be delivered to example.red@example.com," contains the email address that is unreachable. 
 I created an outlook rule that automatically moves messages with "Non recapitabile" in the object to a BOUNCED folder I created.
 This VBA script identifies all the unreachable addresses mentioned in the emails within the BOUNCED folder and matches them with the corresponding contacts in the Contacts folder, flagging or categorizing them in red.
+
+NUMBER 4
+Script with Outlook VBA to compare contacts in an Outlook folder with a list of entries in column A of an Excel file. If a match is found, the script should flag the corresponding contact.
