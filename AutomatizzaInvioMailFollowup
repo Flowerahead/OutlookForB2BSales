@@ -1,0 +1,81 @@
+Sub InviaFollowUp()
+    Dim olNs As Outlook.Namespace
+    Dim olSentFolder As Outlook.folder
+    Dim olSubFolder As Outlook.folder
+    Dim olItem As Outlook.MailItem
+    Dim followUp As Outlook.MailItem
+    Dim destinatario As String
+
+    ' Ottieni lo spazio dei nomi di Outlook (per accedere alle cartelle)
+    Set olNs = Application.GetNamespace("MAPI")
+    
+    ' Ottieni la cartella "Sent" (Posta inviata)
+    On Error Resume Next
+    Set olSentFolder = olNs.GetDefaultFolder(olFolderSentMail)
+    On Error GoTo 0
+
+    ' Controlla se "Sent" è stata trovata
+    If olSentFolder Is Nothing Then
+        MsgBox "Impossibile trovare la cartella 'Sent'.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Ottieni la sottocartella "PROVAMACRO1" di "Sent"
+    On Error Resume Next
+    Set olSubFolder = olSentFolder.Folders("PROVAMACRO1")
+    On Error GoTo 0
+
+    ' Verifica se la sottocartella esiste
+    If olSubFolder Is Nothing Then
+        MsgBox "Impossibile trovare la sottocartella 'PROVAMACRO1'.", vbExclamation
+        Exit Sub
+    End If
+
+    ' Scorri ogni elemento nella sottocartella "PROVAMACRO1"
+    For Each olItem In olSubFolder.items
+        ' Assicurati che l'elemento sia una mail
+        If TypeName(olItem) = "MailItem" Then
+            ' Recupera il destinatario e rimuove eventuali apici
+            destinatario = Replace(olItem.To, "'", "")
+            
+            ' Crea il messaggio di follow-up reale
+            Set followUp = Application.CreateItem(olMailItem)
+            With followUp
+                .To = destinatario  ' Usa il destinatario senza apici
+                .Subject = "RE: " & olItem.Subject
+                
+                ' Visualizza il messaggio per applicare la firma predefinita con immagine
+                .Display
+                
+                ' Costruisci il corpo del messaggio con la firma inclusa automaticamente
+                .htmlBody = "<p>Salve Dottore,</p>" & _
+                            "<p>Sperando tutto bene, volevo sapere se aveva avuto modo di visionare il messaggio.</p>" & _
+                            "<p>Pensa che potrebbe esser di qualche interesse?</p>" & _
+                            "<p>L'occasione mi è gradita per rinnovare</p>" & _
+                            "<p>Un Cordiale Saluto</p>" & _
+                            "<br>" & .htmlBody & _
+                            "<br><hr>" & _
+                            "<p><strong>Messaggio Inviato</strong></p>" & _
+                            "<p><strong>Oggetto:</strong> " & olItem.Subject & "</p>" & _
+                            "<p><strong>Data:</strong> " & olItem.SentOn & "</p>" & _
+                            "<p><strong>Da:</strong> " & olItem.SenderName & "</p>" & _
+                            "<p><strong>A:</strong> " & destinatario & "</p>" & _
+                            "<p>" & olItem.htmlBody & "</p>"  ' Includi il corpo dell'email originale
+                
+                ' Invia il messaggio di follow-up
+                .Send
+            End With
+        End If
+    Next olItem
+    
+    ' Pulisce le variabili
+    Set olSubFolder = Nothing
+    Set olSentFolder = Nothing
+    Set olNs = Nothing
+    Set olItem = Nothing
+    Set followUp = Nothing
+
+    MsgBox "Messaggi di follow-up inviati con successo."
+End Sub
+
+
