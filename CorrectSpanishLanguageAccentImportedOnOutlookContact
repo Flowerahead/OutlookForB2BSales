@@ -1,0 +1,49 @@
+Sub CorreggiAccentiContatti()
+    Dim olApp As Object
+    Dim olNs As Object
+    Dim olFolder As Object
+    Dim olContact As Object
+
+    ' Inizializza l'applicazione Outlook
+    Set olApp = CreateObject("Outlook.Application")
+    Set olNs = olApp.GetNamespace("MAPI")
+    
+    ' Controllo se l'applicazione Outlook è stata inizializzata
+    If olApp Is Nothing Then
+        MsgBox "Errore: Outlook non è installato o non è configurato correttamente."
+        Exit Sub
+    End If
+    
+    ' Imposta la cartella contatti specifica
+    On Error Resume Next
+    Set olFolder = olNs.GetDefaultFolder(10).Folders("MX CEO SOFTWARE DEVELOPMENT")
+    On Error GoTo 0
+    If olFolder Is Nothing Then
+        MsgBox "Errore: La cartella specificata non è stata trovata."
+        Exit Sub
+    End If
+
+    ' Scorri tutti i contatti nella cartella specificata
+    For Each olContact In olFolder.items
+        olContact.FullName = CorreggiAccenti(olContact.FullName)
+        olContact.CompanyName = CorreggiAccenti(olContact.CompanyName)
+        olContact.body = CorreggiAccenti(olContact.body)
+        olContact.Save
+    Next olContact
+    
+    MsgBox "Correzione completata!"
+End Sub
+
+Function CorreggiAccenti(testo As String) As String
+    ' Sostituzioni specifiche per correggere i caratteri
+    testo = Replace(testo, "Ã¡", "á")
+    testo = Replace(testo, "Ã©", "é")
+    testo = Replace(testo, "Ã­", "í")
+    testo = Replace(testo, "Ã³", "ó")
+    testo = Replace(testo, "Ãº", "ú")
+    testo = Replace(testo, "Ã±", "ñ")
+    ' Aggiungi altre sostituzioni se necessario
+    
+    CorreggiAccenti = testo
+End Function
+
