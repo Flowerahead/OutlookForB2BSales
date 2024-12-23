@@ -1,0 +1,126 @@
+Sub TrovaContattiBounced()
+    Dim ns As Outlook.Namespace
+    Dim inbox As Outlook.folder
+    Dim ContactsFolder As Outlook.folder
+    Dim item As Object
+    Dim report As Outlook.ReportItem
+    Dim regExp As Object
+    Dim matches As Object
+    Dim match As Object
+    Dim foundLinks As Collection
+    Dim link As Variant
+    Dim found As Boolean
+
+    On Error Resume Next ' Per gestire errori
+
+    ' Inizializza la cartella BOUNCES
+    Set ns = Application.GetNamespace("MAPI")
+    Set inbox = ns.Folders("GENERALLY IT'S YOUR EMAIL ADDRESS").Folders("BOUNCES OR THE NAME OF THE FOLDER YOU GAVE")
+    If inbox Is Nothing Then
+        MsgBox "La cartella BOUNCES non esiste o non è accessibile.", vbExclamation
+        Exit Sub
+    End If
+    Debug.Print "Cartella BOUNCES trovata."
+
+    ' Inizializza la cartella dei contatti
+    Set ContactsFolder = ns.Folders("GENERALLY IT'S YOUR EMAIL ADDRESS").Folders("Contacts").Folders("MX CEO - IT CONSULTING / OR THE NAME OF THE FOLDER YOU WANT TO MATCH")
+    If ContactsFolder Is Nothing Then
+        MsgBox "La cartella dei contatti MX CEO - IT CONSULTING non esiste o non è accessibile.", vbExclamation
+        Exit Sub
+    End If
+    Debug.Print "Cartella dei contatti trovata."
+
+    ' Inizializza la collezione di link trovati
+    Set foundLinks = New Collection
+
+    ' Inizializza l'espressione regolare per trovare i link "mailto:"
+    Set regExp = CreateObject("VBScript.RegExp")
+    regExp.Pattern = "mailto:([\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,})"
+    regExp.IgnoreCase = True
+
+    ' Cicla tra gli elementi della cartella BOUNCES
+    For Each item In inbox.items
+        ' Gestisce i ReportItem
+        If TypeName(item) = "ReportItem" Then
+            Set report = item
+            Debug.Print "Oggetto Report: " & report.Subject
+
+            ' Cerca link mailto nel corpo del report
+            If regExp.Test(report.body) Then
+                Set matches = regExp.Execute(report.body)
+                For Each match In matches
+                    foundLinks.Add match.Submatches(0) ' Aggiunge l'email catturata
+                    Debug.Print "Link trovato: " & match.Submatches(0)
+                Next match
+            End If
+        End If
+    Next item
+
+    ' Ora cicla tra i link trovati e confrontali con i contatti
+    If foundLinks.Count > 0 Then
+        For Each link In foundLinks
+            Debug.Print "Confronto con email: " & link
+            found = False
+            ' Converte il link in String prima di passarlo
+            Call SearchContactsAndUpdate(ContactsFolder, CStr(link), found)
+            If Not found Then
+                Debug.Print "Email non trovata nei contatti: " & link
+            End If
+        Next link
+    Else
+        MsgBox "Nessun link trovato nei report.", vbExclamation
+    End If
+
+    MsgBox "Processo completato!", vbInformation
+End Sub
+
+Sub SearchContactsAndUpdate(folder As Outlook.folder, emailToFind As String, ByRef found As Boolean)
+    Dim item As Object
+    Dim subfolder As Outlook.folder
+    Dim Contact As Outlook.ContactItem
+    Dim email1 As String
+
+    ' Cerca nei contatti della cartella corrente
+    For Each item In folder.items
+        If item.Class = olContact Then
+            Set Contact = item
+            email1 = Trim(LCase(ExtractEmail(Contact.Email1Address)))
+
+            ' Stampa le informazioni nel debug
+            Debug.Print "Analizzo contatto: " & Contact.FullName
+            Debug.Print "Email: " & email1
+            Debug.Print "Confronto con: " & emailToFind
+
+            ' Confronto le email estratte con quella cercata
+            If email1 = emailToFind Then
+                Debug.Print "Contatto trovato e aggiornato: " & Contact.FullName
+                ' Aggiunge la categoria o flag
+                Contact.Categories = "Rosso" ' Assicurati che "Rosso" sia una categoria valida
+                Contact.Save
+                found = True
+                Exit For
+            End If
+        End If
+    Next item
+
+    ' Cerca nelle sottocartelle, se presenti
+    If Not found Then
+        For Each subfolder In folder.Folders
+            Call SearchContactsAndUpdate(subfolder, emailToFind, found)
+            If found Then Exit For
+        Next subfolder
+    End If
+End Sub
+
+Function ExtractEmail(rawEmail As String) As String
+    Dim regEx As Object
+    Set regEx = CreateObject("VBScript.RegExp")
+    regEx.Pattern = "([\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,})"
+    regEx.IgnoreCase = True
+    If regEx.Test(rawEmail) Then
+        ExtractEmail = regEx.Execute(rawEmail)(0)
+    Else
+        ExtractEmail = ""
+    End If
+End Function
+
